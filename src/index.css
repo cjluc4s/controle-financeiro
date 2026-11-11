@@ -1,0 +1,181 @@
+@import 'tailwindcss';
+
+/* Paleta: teal calmo (confiança), receita azul-esverdeado x despesa laranja
+   (seguro para daltonismo), texto off-white no escuro. Contraste >= 4.5:1. */
+:root {
+  color-scheme: light;
+  --bg: #f5f8f7;
+  --surface: #ffffff;
+  --text: #14201f;
+  --muted: #566866;
+  --line: #e1e9e7;
+  --primary: #0f766e;
+  --on-primary: #ffffff;
+  --hero: #0f766e;
+  --on-hero: #ffffff;
+  --income: #0b6b63;
+  --income-soft: #e2f1ee;
+  --expense: #b7410e;
+  --expense-soft: #fbebe1;
+  /* Cores das barras dos gráficos: validadas (CVD, contraste, saturação) contra a superfície do cartão. */
+  --chart-income: #0d9488;
+  --chart-expense: #c2410c;
+  --shadow: 0 1px 2px rgb(20 32 31 / 0.06), 0 8px 24px rgb(20 32 31 / 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #0d1514;
+    --surface: #151f1e;
+    --text: #e3ecea;
+    --muted: #93a6a3;
+    --line: #243331;
+    --primary: #4fc3b7;
+    --on-primary: #06201d;
+    --hero: #14403c;
+    --on-hero: #e3ecea;
+    --income: #5ccfc2;
+    --income-soft: #17302d;
+    --expense: #f2a06b;
+    --expense-soft: #33241b;
+    --chart-income: #1fa898;
+    --chart-expense: #da6a30;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0d1514;
+  --surface: #151f1e;
+  --text: #e3ecea;
+  --muted: #93a6a3;
+  --line: #243331;
+  --primary: #4fc3b7;
+  --on-primary: #06201d;
+  --hero: #14403c;
+  --on-hero: #e3ecea;
+  --income: #5ccfc2;
+  --income-soft: #17302d;
+  --expense: #f2a06b;
+  --expense-soft: #33241b;
+  --chart-income: #1fa898;
+  --chart-expense: #da6a30;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+@theme inline {
+  --color-chart-income: var(--chart-income);
+  --color-chart-expense: var(--chart-expense);
+  --color-hero: var(--hero);
+  --color-on-hero: var(--on-hero);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
+  --color-expense: var(--expense);
+  --color-expense-soft: var(--expense-soft);
+  --shadow-card: var(--shadow);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@layer base {
+  button {
+    cursor: pointer;
+  }
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* iOS Safari dá ao campo de data uma largura própria e centraliza o texto; isto o trata como um campo comum. */
+  input[type='date'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+  input[type='date']::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.5em;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-sheet {
+  animation: sheet-up 280ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.anim-fade {
+  animation: fade-in 200ms ease-out;
+}
+
+.anim-rise {
+  animation: rise 320ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

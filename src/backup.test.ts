@@ -1,0 +1,45 @@
+import { describe, expect, it } from 'vitest'
+import { parseBackup } from './backup'
+
+const valid = {
+  app: 'controle-financeiro',
+  version: 1,
+  exportedAt: '2026-10-14T12:00:00.000Z',
+  categories: [{ id: 1, name: 'Mercado', kind: 'expense' }],
+  accounts: [{ id: 1, name: 'Carteira' }],
+  transactions: [{ id: 1, kind: 'expense', cents: 4235, date: '2026-10-08', categoryId: 1, accountId: 1, note: 'Compras' }],
+}
+
+describe('parseBackup', () => {
+  it('aceita um backup válido', () => {
+    const result = parseBackup(JSON.stringify(valid))
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejeita texto que não é JSON', () => {
+    expect(parseBackup('isto não é json')).toMatchObject({ ok: false })
+  })
+
+  it('rejeita JSON de outro app', () => {
+    expect(parseBackup(JSON.stringify({ foo: 'bar' }))).toMatchObject({ ok: false })
+  })
+
+  it('rejeita valores quebrados (centavos negativos ou com vírgula)', () => {
+    for (const cents of [-1, 0, 10.5]) {
+      const bad = { ...valid, transactions: [{ ...valid.transactions[0], cents }] }
+      expect(parseBackup(JSON.stringify(bad))).toMatchObject({ ok: false })
+    }
+  })
+
+  it('rejeita data fora do formato AAAA-MM-DD', () => {
+    const bad = { ...valid, transactions: [{ ...valid.transactions[0], date: '08/10/2026' }] }
+    expect(parseBackup(JSON.stringify(bad))).toMatchObject({ ok: false })
+  })
+
+  it('rejeita lançamento ligado a categoria ou conta que não existe', () => {
+    const noCategory = { ...valid, transactions: [{ ...valid.transactions[0], categoryId: 99 }] }
+    const noAccount = { ...valid, transactions: [{ ...valid.transactions[0], accountId: 99 }] }
+    expect(parseBackup(JSON.stringify(noCategory))).toMatchObject({ ok: false })
+    expect(parseBackup(JSON.stringify(noAccount))).toMatchObject({ ok: false })
+  })
+})
