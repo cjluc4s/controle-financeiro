@@ -42,4 +42,37 @@ describe('parseBackup', () => {
     expect(parseBackup(JSON.stringify(noCategory))).toMatchObject({ ok: false })
     expect(parseBackup(JSON.stringify(noAccount))).toMatchObject({ ok: false })
   })
+
+  it('rejeita data que não existe no calendário', () => {
+    for (const date of ['2026-02-30', '2026-13-01', '2026-00-10', '0001-01-01']) {
+      const bad = { ...valid, transactions: [{ ...valid.transactions[0], date }] }
+      expect(parseBackup(JSON.stringify(bad))).toMatchObject({ ok: false })
+    }
+  })
+
+  it('rejeita valor acima do máximo e textos grandes demais', () => {
+    const huge = { ...valid, transactions: [{ ...valid.transactions[0], cents: 10 ** 12 }] }
+    const longNote = { ...valid, transactions: [{ ...valid.transactions[0], note: 'x'.repeat(81) }] }
+    const longName = { ...valid, categories: [{ ...valid.categories[0], name: 'x'.repeat(31) }] }
+    for (const bad of [huge, longNote, longName]) expect(parseBackup(JSON.stringify(bad))).toMatchObject({ ok: false })
+  })
+
+  it('rejeita identificadores repetidos', () => {
+    const dupTx = { ...valid, transactions: [valid.transactions[0], { ...valid.transactions[0] }] }
+    const dupCategory = { ...valid, categories: [valid.categories[0], { ...valid.categories[0], name: 'Outra' }] }
+    expect(parseBackup(JSON.stringify(dupTx))).toMatchObject({ ok: false })
+    expect(parseBackup(JSON.stringify(dupCategory))).toMatchObject({ ok: false })
+  })
+
+  it('rejeita lançamento de receita ligado a categoria de despesa', () => {
+    const bad = { ...valid, transactions: [{ ...valid.transactions[0], kind: 'income' }] }
+    expect(parseBackup(JSON.stringify(bad))).toMatchObject({ ok: false })
+  })
+
+  it('diferencia "outro app" de "backup com valores inválidos" na mensagem', () => {
+    const other = parseBackup(JSON.stringify({ foo: 1 }))
+    const broken = parseBackup(JSON.stringify({ ...valid, transactions: [{ ...valid.transactions[0], cents: -1 }] }))
+    expect(other.ok === false && other.error).toMatch(/não parece ser um backup/)
+    expect(broken.ok === false && broken.error).toMatch(/valores inválidos/)
+  })
 })

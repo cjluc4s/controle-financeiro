@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Icon, type IconName } from './components/Icon'
 import { TxSheet } from './components/TxSheet'
 import { db, type Tx } from './db'
+import { useNavigation, type Tab } from './hooks/useNavigation'
 import { useTheme } from './hooks/useTheme'
 import { monthRange, startOfMonth, toISODate } from './lib/dates'
 import { formatMonth } from './lib/money'
@@ -11,12 +12,10 @@ import { Reports } from './screens/Reports'
 import { Settings } from './screens/Settings'
 import { Statement } from './screens/Statement'
 
-type Tab = 'home' | 'list' | 'reports' | 'settings'
-
 type Sheet = { mode: 'closed' } | { mode: 'new'; date: string } | { mode: 'edit'; tx: Tx }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('home')
+  const { tab, setTab, overlay: sheetOpen, openOverlay, closeOverlay: closeSheet } = useNavigation()
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [sheet, setSheet] = useState<Sheet>({ mode: 'closed' })
   const [theme, setTheme] = useTheme()
@@ -33,13 +32,18 @@ export default function App() {
   }, [])
 
   const shiftMonth = (delta: number) => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1))
-  const closeSheet = () => setSheet({ mode: 'closed' })
+  // A folha vive no histórico do navegador (ver useNavigation): Voltar a fecha.
+  const openSheet = (next: Sheet) => {
+    setSheet(next)
+    openOverlay()
+  }
+  const openEdit = (tx: Tx) => openSheet({ mode: 'edit', tx })
 
   // Data sugerida no novo lançamento: hoje, se estamos vendo o mês atual; senão, o dia 1 do mês visto.
   const openNew = () => {
     const today = new Date()
     const sameMonth = today.getFullYear() === month.getFullYear() && today.getMonth() === month.getMonth()
-    setSheet({ mode: 'new', date: toISODate(sameMonth ? today : month) })
+    openSheet({ mode: 'new', date: toISODate(sameMonth ? today : month) })
   }
 
   const ready = txs && categories && accounts && totalCount !== undefined
@@ -62,8 +66,8 @@ export default function App() {
       <main className="flex-1 space-y-4 px-4 pt-2 pb-36">
         {ready && (
           <>
-            {tab === 'home' && <Home txs={txs} categories={categories} totalCount={totalCount} onOpenTx={(tx) => setSheet({ mode: 'edit', tx })} onNew={openNew} onGoSettings={() => setTab('settings')} />}
-            {tab === 'list' && <Statement txs={txs} categories={categories} onOpenTx={(tx) => setSheet({ mode: 'edit', tx })} />}
+            {tab === 'home' && <Home txs={txs} categories={categories} totalCount={totalCount} onOpenTx={openEdit} onNew={openNew} onGoSettings={() => setTab('settings')} />}
+            {tab === 'list' && <Statement txs={txs} categories={categories} onOpenTx={openEdit} />}
             {tab === 'reports' && <Reports month={month} txs={txs} categories={categories} />}
             {tab === 'settings' && <Settings theme={theme} onTheme={setTheme} />}
           </>
@@ -84,7 +88,7 @@ export default function App() {
         </ul>
       </nav>
 
-      {sheet.mode !== 'closed' && categories && accounts && (
+      {sheetOpen && sheet.mode !== 'closed' && categories && accounts && (
         <TxSheet key={sheet.mode === 'edit' ? sheet.tx.id : 'new'} tx={sheet.mode === 'edit' ? sheet.tx : undefined} defaultDate={sheet.mode === 'new' ? sheet.date : sheet.tx.date} categories={categories} accounts={accounts} onClose={closeSheet} />
       )}
     </div>

@@ -34,3 +34,16 @@ export function daysSince(iso: string | null, now = new Date()): number | null {
   const then = new Date(y, m - 1, d)
   return Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - then.getTime()) / 86_400_000)
 }
+
+const MIN_YEAR = 1900
+const MAX_YEAR = 2999
+
+/** true só para datas AAAA-MM-DD que existem no calendário ("2026-02-30" e "2026-13-01" são inválidas). */
+export function isValidISODate(value: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!m) return false
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  if (y < MIN_YEAR || y > MAX_YEAR) return false
+  const date = new Date(y, mo - 1, d)
+  return date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d
+}

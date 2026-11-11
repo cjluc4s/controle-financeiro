@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { db, type Account, type Category, type Kind, type Tx } from '../db'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DataError, deleteTx, saveTx } from '../data'
+import type { Account, Category, Kind, Tx } from '../db'
+import { isValidISODate } from '../lib/dates'
 import { centsToInput, maskAmount, parseMaskedToCents } from '../lib/money'
 import { Icon } from './Icon'
 
@@ -20,12 +22,16 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
   const [note, setNote] = useState(tx?.note ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const kindCategories = useMemo(() => categories.filter((c) => c.kind === kind), [categories, kind])
   // Se a categoria escolhida não é do tipo atual (ex.: trocou de despesa para receita), usa a primeira do tipo.
   const activeCategory = kindCategories.find((c) => c.id === categoryId) ?? kindCategories[0]
+  // Mesma ideia para a conta: se a escolhida foi excluída enquanto a folha estava aberta, usa a primeira.
+  const activeAccount = accounts.find((a) => a.id === accountId) ?? accounts[0]
   const cents = parseMaskedToCents(value)
-  const canSave = cents !== null && cents > 0 && activeCategory !== undefined && accountId !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(date)
+  const canSave = cents !== null && cents > 0 && activeCategory !== undefined && activeAccount !== undefined && isValidISODate(date)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -33,25 +39,44 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // Em telas baixas a mensagem de erro fica abaixo da dobra da folha: rola só a folha até o fim
+  // (scrollIntoView poderia rolar também a página que está por trás).
+  useEffect(() => {
+    if (error && formRef.current) formRef.current.scrollTop = formRef.current.scrollHeight
+  }, [error])
+
   async function save() {
-    if (!canSave || saving) return
+    if (saving || !canSave) return
     setSaving(true)
-    const data = { kind, cents, date, categoryId: activeCategory.id, accountId, note: note.trim() }
-    if (tx) await db.transactions.update(tx.id, data)
-    else await db.transactions.add(data)
-    onClose()
+    setError(null)
+    try {
+      await saveTx(tx?.id, { kind, cents, date, categoryId: activeCategory.id, accountId: activeAccount.id, note })
+      onClose()
+    } catch (e) {
+      setError(e instanceof DataError ? e.message : 'Não foi possível salvar. Tente de novo.')
+      setSaving(false)
+    }
   }
 
   async function remove() {
-    if (!tx) return
-    await db.transactions.delete(tx.id)
-    onClose()
+    if (!tx || saving) return
+    setSaving(true)
+    setError(null)
+    try {
+      await deleteTx(tx.id)
+      onClose()
+    } catch {
+      setError('Não foi possível excluir. Tente de novo.')
+      setSaving(false)
+      setConfirmDelete(false)
+    }
   }
 
   return (
     <div className="fixed inset-0 z-20 flex items-end justify-center">
       <button aria-label="Fechar" onClick={onClose} className="anim-fade absolute inset-0 bg-black/50" />
       <form
+        ref={formRef}
         role="dialog"
         aria-modal="true"
         aria-label={tx ? 'Editar lançamento' : 'Novo lançamento'}
@@ -113,7 +138,7 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
           </label>
           <label className="block min-w-0">
             <span className="text-sm text-muted">Conta</span>
-            <select value={accountId ?? ''} onChange={(e) => setAccountId(Number(e.target.value))} className="mt-1 box-border block h-12 w-full min-w-0 rounded-2xl border border-line bg-bg px-3 outline-none focus:border-primary">
+            <select value={activeAccount?.id ?? ''} onChange={(e) => setAccountId(Number(e.target.value))} className="mt-1 box-border block h-12 w-full min-w-0 rounded-2xl border border-line bg-bg px-3 outline-none focus:border-primary">
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -125,6 +150,12 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
 
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Descrição (opcional)" maxLength={80} className="w-full rounded-2xl border border-line bg-bg px-4 py-3 outline-none focus:border-primary" />
 
+        {error && (
+          <p role="alert" className="rounded-2xl bg-expense-soft px-4 py-3 text-sm text-expense">
+            {error}
+          </p>
+        )}
+
         <button type="submit" disabled={!canSave || saving} className="w-full rounded-2xl bg-primary py-3.5 text-base font-semibold text-on-primary transition-opacity active:scale-[0.98] disabled:opacity-40">
           Salvar
         </button>
@@ -135,7 +166,7 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
               <button type="button" onClick={() => setConfirmDelete(false)} className="rounded-2xl border border-line py-3 font-medium text-muted">
                 Cancelar
               </button>
-              <button type="button" onClick={() => void remove()} className="rounded-2xl bg-expense-soft py-3 font-semibold text-expense">
+              <button type="button" onClick={() => void remove()} disabled={saving} className="rounded-2xl bg-expense-soft py-3 font-semibold text-expense disabled:opacity-50">
                 Confirmar exclusão
               </button>
             </div>

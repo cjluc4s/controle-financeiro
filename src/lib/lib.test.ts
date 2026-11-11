@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysSince, formatDayMonth, monthRange, toISODate } from './dates'
+import { daysSince, formatDayMonth, isValidISODate, monthRange, toISODate } from './dates'
 import { centsToInput, maskAmount, parseMaskedToCents, parseToCents } from './money'
 
 describe('maskAmount (campo de valor)', () => {
@@ -96,4 +96,11 @@ describe('datas', () => {
     expect(daysSince('2026-09-14', now)).toBe(30)
     expect(daysSince(null, now)).toBeNull()
   })
+})
+
+describe('isValidISODate', () => {
+  it.each(['2026-10-08', '2024-02-29', '1900-01-01', '2999-12-31'])('aceita %s', (d) => expect(isValidISODate(d)).toBe(true))
+  it.each(['', '2026-2-3', '08/10/2026', '2026-02-30', '2025-02-29', '2026-13-01', '2026-00-10', '2026-10-32', '0001-01-01', '3000-01-01', '275760-09-13'])('recusa "%s"', (d) =>
+    expect(isValidISODate(d)).toBe(false),
+  )
 })

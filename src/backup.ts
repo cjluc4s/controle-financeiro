@@ -1,27 +1,36 @@
 import { z } from 'zod'
 import { db } from './db'
-import { toISODate } from './lib/dates'
+import { isValidISODate, toISODate } from './lib/dates'
+import { MAX_CENTS } from './lib/money'
 
 const kind = z.enum(['income', 'expense'])
 const id = z.number().int().positive()
+
+// Os limites de tamanho são os mesmos dos campos do app (nome: 30, descrição: 80).
+const NAME_MAX = 30
+const NOTE_MAX = 80
+// Quantidade de contas, categorias e lançamentos: só um teto para recusar arquivos absurdos.
+const MAX_ITEMS = 500_000
 
 const backupSchema = z.object({
   app: z.literal('controle-financeiro'),
   version: z.literal(1),
   exportedAt: z.string(),
-  categories: z.array(z.object({ id, name: z.string().min(1), kind })),
-  accounts: z.array(z.object({ id, name: z.string().min(1) })),
-  transactions: z.array(
-    z.object({
-      id,
-      kind,
-      cents: z.number().int().positive(),
-      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      categoryId: id,
-      accountId: id,
-      note: z.string(),
-    }),
-  ),
+  categories: z.array(z.object({ id, name: z.string().min(1).max(NAME_MAX), kind })).max(MAX_ITEMS),
+  accounts: z.array(z.object({ id, name: z.string().min(1).max(NAME_MAX) })).max(MAX_ITEMS),
+  transactions: z
+    .array(
+      z.object({
+        id,
+        kind,
+        cents: z.number().int().positive().max(MAX_CENTS),
+        date: z.string().refine(isValidISODate, 'data inválida'),
+        categoryId: id,
+        accountId: id,
+        note: z.string().max(NOTE_MAX),
+      }),
+    )
+    .max(MAX_ITEMS),
 })
 
 export type Backup = z.infer<typeof backupSchema>
@@ -55,13 +64,39 @@ export function parseBackup(text: string): ParseResult {
     return { ok: false, error: 'O arquivo não é um JSON válido.' }
   }
   const parsed = backupSchema.safeParse(raw)
-  if (!parsed.success) return { ok: false, error: 'O arquivo não parece ser um backup deste app.' }
+  if (!parsed.success) {
+    const fromThisApp = typeof raw === 'object' && raw !== null && (raw as { app?: unknown }).app === 'controle-financeiro'
+    return {
+      ok: false,
+      error: fromThisApp ? 'O backup tem valores inválidos (valor, data ou texto fora do permitido).' : 'O arquivo não parece ser um backup deste app.',
+    }
+  }
   const data = parsed.data
-  const categoryIds = new Set(data.categories.map((c) => c.id))
+
+  // Ids repetidos fariam a importação falhar no meio; melhor avisar antes.
+  const hasDuplicates = [data.categories, data.accounts, data.transactions].some((rows) => new Set(rows.map((r) => r.id)).size !== rows.length)
+  if (hasDuplicates) return { ok: false, error: 'O backup tem itens repetidos (mesmo identificador usado duas vezes).' }
+
+  const categoryKind = new Map(data.categories.map((c) => [c.id, c.kind]))
   const accountIds = new Set(data.accounts.map((a) => a.id))
-  const broken = data.transactions.some((t) => !categoryIds.has(t.categoryId) || !accountIds.has(t.accountId))
-  if (broken) return { ok: false, error: 'O backup tem lançamentos ligados a categorias ou contas que não existem.' }
+  const orphan = data.transactions.some((t) => !categoryKind.has(t.categoryId) || !accountIds.has(t.accountId))
+  if (orphan) return { ok: false, error: 'O backup tem lançamentos ligados a categorias ou contas que não existem.' }
+  const wrongKind = data.transactions.some((t) => categoryKind.get(t.categoryId) !== t.kind)
+  if (wrongKind) return { ok: false, error: 'O backup tem lançamentos de receita ou despesa ligados a uma categoria do tipo oposto.' }
   return { ok: true, data }
+}
+
+// Quantidade de categorias e contas criadas na primeira abertura do banco (ver db.ts).
+const DEFAULT_CATEGORIES = 8
+const DEFAULT_ACCOUNTS = 2
+
+/**
+ * Há algo que valha proteger antes de substituir tudo? Lançamentos, ou categorias/contas além das iniciais.
+ * (Só renomear as iniciais não conta; a perda seria pequena.)
+ */
+export async function hasLocalData(): Promise<boolean> {
+  const [tx, categories, accounts] = await Promise.all([db.transactions.count(), db.categories.count(), db.accounts.count()])
+  return tx > 0 || categories !== DEFAULT_CATEGORIES || accounts !== DEFAULT_ACCOUNTS
 }
 
 export async function buildBackup(): Promise<Backup> {

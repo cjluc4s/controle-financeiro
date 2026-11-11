@@ -18,6 +18,9 @@ export function parseToCents(input: string): number | null {
 
 const MAX_INT_DIGITS = 9
 
+/** Maior valor aceito em um lançamento, em centavos (999.999.999,99): o que o campo de valor consegue digitar. */
+export const MAX_CENTS = 10 ** (MAX_INT_DIGITS + 2) - 1
+
 /**
  * Formata o que a pessoa digita no campo de valor, enquanto digita: "1000" -> "1.000", "1234,5" -> "1.234,5".
  * Vírgula = decimal (até 2 casas). Um ponto digitado no fim, sem vírgula ainda, vira vírgula
