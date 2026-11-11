@@ -1,10 +1,11 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Icon } from '../components/Icon'
-import { db, type Category, type Kind, type Tx } from '../db'
+import type { Category, Kind, Tx } from '../db'
+import { useTxsBetween } from '../hooks/useData'
 import { formatDayMonth, monthRange, shortMonth, toISODate } from '../lib/dates'
 import { formatCents, formatMonth } from '../lib/money'
 import { breakdown, dailyAverage, formatCompact, largestExpense, lastMonths, niceScale, savingsRate, totalsByMonth } from '../lib/reports'
+import { nameMap } from '../lib/tx'
 
 interface Props {
   /** Mês escolhido no cabeçalho. */
@@ -23,16 +24,17 @@ export function Reports({ month, txs, categories }: Props) {
   const [now] = useState(() => new Date())
 
   const months = useMemo(() => lastMonths(month, range), [month, range])
-  const from = toISODate(months[0])
+  const from = toISODate(months[0] ?? month)
   const to = monthRange(month)[1]
-  const history = useLiveQuery(() => db.transactions.where('date').between(from, to, true, false).toArray(), [from, to])
+  const history = useTxsBetween(from, to)
 
-  const names = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories])
+  const names = useMemo(() => nameMap(categories), [categories])
   const totals = useMemo(() => totalsByMonth(history ?? [], months), [history, months])
-  if (!history) return null
+  const current = totals.at(-1)
+  const previous = totals.at(-2)
+  // `range` é 6 ou 12, então sempre há mês atual e anterior; a checagem existe só para o TypeScript.
+  if (!history || !current || !previous) return null
 
-  const current = totals[totals.length - 1]
-  const previous = totals[totals.length - 2]
   const rate = savingsRate(current.income, current.expense)
   const prevRate = savingsRate(previous.income, previous.expense)
   const avg = dailyAverage(current.expense, month, now)
@@ -72,7 +74,11 @@ export function Reports({ month, txs, categories }: Props) {
           {avg > 0 && prevAvg > 0 && <Delta change={((avg - prevAvg) / prevAvg) * 100} unit="%" goodWhenUp={false} />}
         </Tile>
         <div className="col-span-2">
-          <Tile label="Maior despesa" value={biggest ? formatCents(biggest.cents) : '—'} hint={biggest ? `${biggest.note || names.get(biggest.categoryId) || 'Sem categoria'} · ${formatDayMonth(biggest.date)}` : 'Nenhuma despesa no mês'} />
+          <Tile
+            label="Maior despesa"
+            value={biggest ? formatCents(biggest.cents) : '—'}
+            hint={biggest ? `${biggest.note || names.get(biggest.categoryId) || 'Sem categoria'} · ${formatDayMonth(biggest.date)}` : 'Nenhuma despesa no mês'}
+          />
         </div>
       </section>
 
@@ -195,7 +201,7 @@ function CategoryChart({ title, subtitle, kind, rows }: { title: string; subtitl
                   {formatCents(r.cents)} <span className="text-muted">· {percent(r.share)}</span>
                 </span>
               </div>
-              {/* Barra fina (8px), ponta arredondada, nascendo da base; "Outras" em cinza para não competir. */}
+              {/* Barra fina (8px), ponta arredondada, nascendo da base; "Demais categorias" em cinza para não competir. */}
               <div className="h-2 rounded-full bg-line" role="presentation">
                 <div className={`h-full rounded-r-[4px] rounded-l-full transition-[width] duration-500 ${r.id === null ? 'bg-muted' : color}`} style={{ width: `${Math.max(r.share * 100, 1.5)}%` }} />
               </div>
@@ -222,9 +228,10 @@ function MonthsChart({ totals }: { totals: ReturnType<typeof totalsByMonth> }) {
   const [table, setTable] = useState(false)
   const [picked, setPicked] = useState<string | null>(null)
 
-  const selected = totals.find((t) => t.key === picked) ?? totals[totals.length - 1]
+  const selected = totals.find((t) => t.key === picked) ?? totals.at(-1)
   const { top, ticks } = niceScale(Math.max(...totals.map((t) => Math.max(t.income, t.expense))))
   const empty = totals.every((t) => t.income === 0 && t.expense === 0)
+  if (!selected) return null // `totals` nunca vem vazio; a checagem existe só para o TypeScript.
 
   return (
     <section className="rounded-3xl bg-surface p-5 shadow-card" aria-label="Receitas e despesas por mês">

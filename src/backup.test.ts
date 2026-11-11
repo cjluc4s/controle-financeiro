@@ -72,7 +72,7 @@ describe('parseBackup', () => {
   it('diferencia "outro app" de "backup com valores inválidos" na mensagem', () => {
     const other = parseBackup(JSON.stringify({ foo: 1 }))
     const broken = parseBackup(JSON.stringify({ ...valid, transactions: [{ ...valid.transactions[0], cents: -1 }] }))
-    expect(other.ok === false && other.error).toMatch(/não parece ser um backup/)
-    expect(broken.ok === false && broken.error).toMatch(/valores inválidos/)
+    expect(other).toMatchObject({ ok: false, error: expect.stringMatching(/não parece ser um backup/) })
+    expect(broken).toMatchObject({ ok: false, error: expect.stringMatching(/valores inválidos/) })
   })
 })

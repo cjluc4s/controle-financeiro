@@ -32,7 +32,8 @@ export function maskAmount(input: string): string {
 
   const comma = s.indexOf(',')
   const intRaw = (comma === -1 ? s : s.slice(0, comma)).replace(/\D/g, '').slice(0, MAX_INT_DIGITS)
-  const decimals = comma === -1 ? null : s.slice(comma + 1).replace(/\D/g, '').slice(0, 2)
+  const afterComma = comma === -1 ? null : s.slice(comma + 1)
+  const decimals = afterComma === null ? null : afterComma.replace(/\D/g, '').slice(0, 2)
 
   const intDigits = intRaw.replace(/^0+(?=\d)/, '')
   const intPart = (intDigits === '' && decimals !== null ? '0' : intDigits).replace(/\B(?=(\d{3})+(?!\d))/g, '.')

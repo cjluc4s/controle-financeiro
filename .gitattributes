@@ -1,0 +1,4 @@
+# Fim de linha sempre LF no repositório e na pasta de trabalho (o Prettier e o CI esperam LF, inclusive no Windows).
+* text=auto eol=lf
+*.png binary
+*.ico binary

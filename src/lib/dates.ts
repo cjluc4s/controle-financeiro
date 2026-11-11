@@ -31,7 +31,9 @@ export function formatDayMonth(iso: string): string {
 export function daysSince(iso: string | null, now = new Date()): number | null {
   if (!iso) return null
   const [y, m, d] = iso.split('-').map(Number)
+  if (y === undefined || m === undefined || d === undefined) return null
   const then = new Date(y, m - 1, d)
+  if (Number.isNaN(then.getTime())) return null // texto que não é data (valor corrompido no aparelho)
   return Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - then.getTime()) / 86_400_000)
 }
 

@@ -13,10 +13,7 @@ describe('lastMonths', () => {
 describe('totalsByMonth', () => {
   const months = lastMonths(new Date(2026, 9, 14), 3) // ago, set, out
   it('soma receitas e despesas por mês e zera os meses sem lançamento', () => {
-    const rows = totalsByMonth(
-      [tx('income', 500000, '2026-10-05'), tx('expense', 10000, '2026-10-06'), tx('expense', 2550, '2026-10-30'), tx('expense', 7000, '2026-08-01')],
-      months,
-    )
+    const rows = totalsByMonth([tx('income', 500000, '2026-10-05'), tx('expense', 10000, '2026-10-06'), tx('expense', 2550, '2026-10-30'), tx('expense', 7000, '2026-08-01')], months)
     expect(rows.map((r) => [r.key, r.income, r.expense])).toEqual([
       ['2026-08', 0, 7000],
       ['2026-09', 0, 0],
@@ -43,7 +40,7 @@ describe('breakdown', () => {
       ['Moradia', 700],
       ['Mercado', 400],
     ])
-    expect(rows[0].share).toBeCloseTo(700 / 1100)
+    expect(rows[0]?.share).toBeCloseTo(700 / 1100)
     expect(rows.reduce((s, r) => s + r.share, 0)).toBeCloseTo(1)
   })
 
@@ -52,19 +49,19 @@ describe('breakdown', () => {
     expect(rows).toEqual([{ id: 3, name: 'Lazer', cents: 900, share: 1 }])
   })
 
-  it('junta o que passa do limite em "Outras", mas só se sobrar mais de uma categoria', () => {
+  it('junta o que passa do limite em "Demais categorias", mas só se sobrar mais de uma categoria', () => {
     const many = [1, 2, 3, 4, 5].map((id) => tx('expense', 1000 - id * 100, '2026-10-01', id)) // 900, 800, 700, 600, 500
     const grouped = breakdown(many, 'expense', names, 3)
-    expect(grouped.map((r) => r.name)).toEqual(['Mercado', 'Moradia', 'Lazer', 'Outras'])
+    expect(grouped.map((r) => r.name)).toEqual(['Mercado', 'Moradia', 'Lazer', 'Demais categorias'])
     expect(grouped[3]).toMatchObject({ id: null, cents: 1100 })
 
     const justOver = breakdown(many.slice(0, 4), 'expense', names, 3)
     expect(justOver).toHaveLength(4)
-    expect(justOver.some((r) => r.name === 'Outras')).toBe(false)
+    expect(justOver.some((r) => r.name === 'Demais categorias')).toBe(false)
   })
 
   it('usa "Sem categoria" quando a categoria foi apagada e devolve vazio sem dados', () => {
-    expect(breakdown([tx('expense', 100, '2026-10-01', 99)], 'expense', names)[0].name).toBe('Sem categoria')
+    expect(breakdown([tx('expense', 100, '2026-10-01', 99)], 'expense', names)[0]?.name).toBe('Sem categoria')
     expect(breakdown([], 'expense', names)).toEqual([])
   })
 })

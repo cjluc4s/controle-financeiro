@@ -1,12 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRef, useState } from 'react'
-import { exportBackup, getLastBackup, hasLocalData, parseBackup, restoreBackup } from '../backup'
+import { exportBackup, hasLocalData, parseBackup, restoreBackup } from '../backup'
 import { Icon } from '../components/Icon'
 import { ManageList } from '../components/ManageList'
 import { addAccount, addCategory, DataError, deleteAccount, deleteCategory, renameAccount, renameCategory } from '../data'
 import { db } from '../db'
+import { useAccounts, useCategories } from '../hooks/useData'
 import type { Theme } from '../hooks/useTheme'
 import { daysSince } from '../lib/dates'
+import { getLastBackup } from '../lib/lastBackup'
 
 interface Props {
   theme: Theme
@@ -15,7 +17,7 @@ interface Props {
 
 type ListId = 'expense' | 'income' | 'accounts'
 
-const plural =(n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
 const THEMES: { id: Theme; label: string }[] = [
   { id: 'auto', label: 'Automático' },
@@ -24,8 +26,8 @@ const THEMES: { id: Theme; label: string }[] = [
 ]
 
 export function Settings({ theme, onTheme }: Props) {
-  const categories = useLiveQuery(() => db.categories.toArray(), [])
-  const accounts = useLiveQuery(() => db.accounts.toArray(), [])
+  const categories = useCategories()
+  const accounts = useAccounts()
   const usage = useLiveQuery(async () => {
     const byCategory = new Map<number, number>()
     const byAccount = new Map<number, number>()
@@ -131,10 +133,18 @@ export function Settings({ theme, onTheme }: Props) {
         <h2 className="font-semibold">Backup</h2>
         <p className="text-sm text-muted">Seus dados ficam só neste aparelho. Exporte um arquivo para guardar uma cópia ou levar para o outro celular. {backupText}</p>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => void onExport()} disabled={busy} className="flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-on-primary active:scale-95 disabled:opacity-50">
+          <button
+            onClick={() => void onExport()}
+            disabled={busy}
+            className="flex items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-on-primary active:scale-95 disabled:opacity-50"
+          >
             <Icon name="share" className="size-5" /> Exportar
           </button>
-          <button onClick={() => fileInput.current?.click()} disabled={busy} className="flex items-center justify-center gap-2 rounded-2xl border border-line py-3 font-semibold active:scale-95 disabled:opacity-50">
+          <button
+            onClick={() => fileInput.current?.click()}
+            disabled={busy}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-line py-3 font-semibold active:scale-95 disabled:opacity-50"
+          >
             <Icon name="upload" className="size-5" /> Importar
           </button>
         </div>

@@ -5,8 +5,16 @@ export type Tab = 'home' | 'list' | 'reports' | 'settings'
 // A aba fica no "#" do endereço: recarregar a página mantém a aba e o botão Voltar do celular passa por elas.
 const HASH: Record<Tab, string> = { home: '#/', list: '#/extrato', reports: '#/relatorios', settings: '#/ajustes' }
 
+const TABS: Tab[] = ['home', 'list', 'reports', 'settings']
+
 function tabFromHash(hash: string): Tab {
-  return (Object.keys(HASH) as Tab[]).find((t) => HASH[t] === hash) ?? 'home'
+  return TABS.find((t) => HASH[t] === hash) ?? 'home'
+}
+
+/** A entrada atual do histórico é a da folha de lançamento? */
+function isOverlayEntry(): boolean {
+  const state: unknown = window.history.state
+  return typeof state === 'object' && state !== null && 'overlay' in state && state.overlay === true
 }
 
 /**
@@ -22,12 +30,12 @@ export function useNavigation() {
 
   useEffect(() => {
     // Recarregar a página com a folha "aberta" no histórico: a folha não existe mais, então limpa a marca.
-    if ((window.history.state as { overlay?: boolean } | null)?.overlay) window.history.replaceState(null, '')
+    if (isOverlayEntry()) window.history.replaceState(null, '')
 
     const onPop = () => {
       setTabState(tabFromHash(window.location.hash))
       // Avançar (→) até uma entrada de folha não tem como reabrir a folha: a entrada vira uma comum.
-      if ((window.history.state as { overlay?: boolean } | null)?.overlay) window.history.replaceState(null, '')
+      if (isOverlayEntry()) window.history.replaceState(null, '')
       overlayRef.current = false
       setOverlay(false)
     }
@@ -52,7 +60,7 @@ export function useNavigation() {
     if (!overlayRef.current) return
     overlayRef.current = false
     // Voltar no histórico dispara o `popstate`, que fecha a folha. Sem a marca (caso estranho), fecha direto.
-    if ((window.history.state as { overlay?: boolean } | null)?.overlay) window.history.back()
+    if (isOverlayEntry()) window.history.back()
     else setOverlay(false)
   }, [])
 

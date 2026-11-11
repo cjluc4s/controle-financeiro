@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { db } from './db'
 import { isValidISODate, toISODate } from './lib/dates'
+import { setLastBackup } from './lib/lastBackup'
 import { MAX_CENTS } from './lib/money'
 
 const kind = z.enum(['income', 'expense'])
@@ -36,24 +37,6 @@ const backupSchema = z.object({
 export type Backup = z.infer<typeof backupSchema>
 
 export type ParseResult = { ok: true; data: Backup } | { ok: false; error: string }
-
-const LAST_BACKUP_KEY = 'lastBackup'
-
-export function getLastBackup(): string | null {
-  try {
-    return localStorage.getItem(LAST_BACKUP_KEY)
-  } catch {
-    return null
-  }
-}
-
-function setLastBackup(iso: string) {
-  try {
-    localStorage.setItem(LAST_BACKUP_KEY, iso)
-  } catch {
-    /* sem armazenamento: o aviso de backup só fica menos preciso */
-  }
-}
 
 /** Valida o conteúdo de um arquivo de backup, inclusive se categorias e contas citadas existem. */
 export function parseBackup(text: string): ParseResult {

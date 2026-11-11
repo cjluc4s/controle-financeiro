@@ -1,16 +1,19 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useState } from 'react'
+import { lazy, useEffect, useState } from 'react'
 import { Icon, type IconName } from './components/Icon'
+import { LazyScreen } from './components/LazyScreen'
 import { TxSheet } from './components/TxSheet'
-import { db, type Tx } from './db'
+import type { Tx } from './db'
+import { useAccounts, useCategories, useMonthTxs, useTxCount } from './hooks/useData'
 import { useNavigation, type Tab } from './hooks/useNavigation'
 import { useTheme } from './hooks/useTheme'
-import { monthRange, startOfMonth, toISODate } from './lib/dates'
+import { startOfMonth, toISODate } from './lib/dates'
 import { formatMonth } from './lib/money'
 import { Home } from './screens/Home'
-import { Reports } from './screens/Reports'
-import { Settings } from './screens/Settings'
 import { Statement } from './screens/Statement'
+
+// Relatórios (gráficos) e Ajustes (backup, zod) são carregados só quando a pessoa abre a aba.
+const Reports = lazy(() => import('./screens/Reports').then((m) => ({ default: m.Reports })))
+const Settings = lazy(() => import('./screens/Settings').then((m) => ({ default: m.Settings })))
 
 type Sheet = { mode: 'closed' } | { mode: 'new'; date: string } | { mode: 'edit'; tx: Tx }
 
@@ -20,11 +23,10 @@ export default function App() {
   const [sheet, setSheet] = useState<Sheet>({ mode: 'closed' })
   const [theme, setTheme] = useTheme()
 
-  const [start, end] = monthRange(month)
-  const txs = useLiveQuery(() => db.transactions.where('date').between(start, end, true, false).toArray(), [start, end])
-  const categories = useLiveQuery(() => db.categories.toArray(), [])
-  const accounts = useLiveQuery(() => db.accounts.toArray(), [])
-  const totalCount = useLiveQuery(() => db.transactions.count(), [])
+  const txs = useMonthTxs(month)
+  const categories = useCategories()
+  const accounts = useAccounts()
+  const totalCount = useTxCount()
 
   // Pede ao navegador para não apagar os dados quando faltar espaço (importante no Safari).
   useEffect(() => {
@@ -68,8 +70,16 @@ export default function App() {
           <>
             {tab === 'home' && <Home txs={txs} categories={categories} totalCount={totalCount} onOpenTx={openEdit} onNew={openNew} onGoSettings={() => setTab('settings')} />}
             {tab === 'list' && <Statement txs={txs} categories={categories} onOpenTx={openEdit} />}
-            {tab === 'reports' && <Reports month={month} txs={txs} categories={categories} />}
-            {tab === 'settings' && <Settings theme={theme} onTheme={setTheme} />}
+            {tab === 'reports' && (
+              <LazyScreen>
+                <Reports month={month} txs={txs} categories={categories} />
+              </LazyScreen>
+            )}
+            {tab === 'settings' && (
+              <LazyScreen>
+                <Settings theme={theme} onTheme={setTheme} />
+              </LazyScreen>
+            )}
           </>
         )}
       </main>
@@ -79,7 +89,11 @@ export default function App() {
           <TabButton current={tab} id="home" label="Início" icon="home" onSelect={setTab} />
           <TabButton current={tab} id="list" label="Extrato" icon="list" onSelect={setTab} />
           <li className="flex justify-center">
-            <button onClick={openNew} aria-label="Novo lançamento" className="-mt-7 grid size-14 place-items-center rounded-full bg-primary text-on-primary shadow-card transition-transform active:scale-90">
+            <button
+              onClick={openNew}
+              aria-label="Novo lançamento"
+              className="-mt-7 grid size-14 place-items-center rounded-full bg-primary text-on-primary shadow-card transition-transform active:scale-90"
+            >
               <Icon name="plus" className="size-7" />
             </button>
           </li>
@@ -89,7 +103,14 @@ export default function App() {
       </nav>
 
       {sheetOpen && sheet.mode !== 'closed' && categories && accounts && (
-        <TxSheet key={sheet.mode === 'edit' ? sheet.tx.id : 'new'} tx={sheet.mode === 'edit' ? sheet.tx : undefined} defaultDate={sheet.mode === 'new' ? sheet.date : sheet.tx.date} categories={categories} accounts={accounts} onClose={closeSheet} />
+        <TxSheet
+          key={sheet.mode === 'edit' ? sheet.tx.id : 'new'}
+          tx={sheet.mode === 'edit' ? sheet.tx : undefined}
+          defaultDate={sheet.mode === 'new' ? sheet.date : sheet.tx.date}
+          categories={categories}
+          accounts={accounts}
+          onClose={closeSheet}
+        />
       )}
     </div>
   )
@@ -99,7 +120,11 @@ function TabButton({ current, id, label, icon, onSelect }: { current: Tab; id: T
   const active = current === id
   return (
     <li>
-      <button onClick={() => onSelect(id)} aria-current={active ? 'page' : undefined} className={`flex w-full flex-col items-center gap-0.5 rounded-2xl px-0.5 py-2 text-[10px] font-medium transition-colors min-[360px]:text-[11px] ${active ? 'text-primary' : 'text-muted'}`}>
+      <button
+        onClick={() => onSelect(id)}
+        aria-current={active ? 'page' : undefined}
+        className={`flex w-full flex-col items-center gap-0.5 rounded-2xl px-0.5 py-2 text-[10px] font-medium transition-colors min-[360px]:text-[11px] ${active ? 'text-primary' : 'text-muted'}`}
+      >
         <Icon name={icon} className="size-6" />
         {label}
       </button>

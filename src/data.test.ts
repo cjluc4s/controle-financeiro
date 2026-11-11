@@ -28,13 +28,13 @@ async function expectDataError(promise: Promise<unknown>, message?: RegExp) {
     (e: unknown) => e,
   )
   expect(error).toBeInstanceOf(DataError)
-  if (message) expect((error as DataError).message).toMatch(message)
+  expect(error instanceof Error ? error.message : '').toMatch(message ?? /./)
 }
 
 describe('saveTx', () => {
   it('cria e atualiza um lançamento', async () => {
     await saveTx(undefined, await input())
-    const [created] = await db.transactions.toArray()
+    const created = (await db.transactions.toArray())[0]!
     expect(created).toMatchObject({ cents: 1500, note: 'Teste' })
 
     await saveTx(created.id, await input({ cents: 2000, note: '  novo  ' }))

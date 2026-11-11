@@ -40,7 +40,7 @@ export function totalsByMonth(txs: TxLike[], months: Date[]): MonthTotals[] {
 }
 
 export interface CategoryRow {
-  /** null na linha "Outras", que junta as categorias menores. */
+  /** null na linha "Demais categorias", que junta as categorias menores. */
   id: number | null
   name: string
   cents: number
@@ -48,7 +48,7 @@ export interface CategoryRow {
   share: number
 }
 
-/** Total por categoria, da maior para a menor. O que passar de `top` categorias vira uma linha "Outras". */
+/** Total por categoria, da maior para a menor. O que passar de `top` categorias vira uma linha "Demais categorias". */
 export function breakdown(txs: TxLike[], kind: Kind, names: Map<number, string>, top = 6): CategoryRow[] {
   const sums = new Map<number, number>()
   let total = 0
@@ -62,10 +62,10 @@ export function breakdown(txs: TxLike[], kind: Kind, names: Map<number, string>,
   const sorted = [...sums.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])
   const toRow = ([id, cents]: [number, number]): CategoryRow => ({ id, name: names.get(id) ?? 'Sem categoria', cents, share: cents / total })
 
-  // Só agrupa se sobrar mais de uma categoria: uma única "Outras" seria só esconder o nome dela.
+  // Só agrupa se sobrar mais de uma categoria: uma única "Demais categorias" seria só esconder o nome dela.
   if (sorted.length <= top + 1) return sorted.map(toRow)
   const rest = sorted.slice(top).reduce((sum, [, cents]) => sum + cents, 0)
-  return [...sorted.slice(0, top).map(toRow), { id: null, name: 'Outras', cents: rest, share: rest / total }]
+  return [...sorted.slice(0, top).map(toRow), { id: null, name: 'Demais categorias', cents: rest, share: rest / total }]
 }
 
 /** Quanto da receita sobrou, de -∞ a 1 (negativo = gastou mais do que ganhou). null se não houve receita. */

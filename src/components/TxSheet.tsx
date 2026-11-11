@@ -113,7 +113,14 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
           <span className="text-sm text-muted">Valor</span>
           <div className="flex items-baseline gap-2 border-b-2 border-line pb-1 focus-within:border-primary">
             <span className="text-2xl text-muted">R$</span>
-            <input autoFocus={!tx} inputMode="decimal" placeholder="0,00" value={value} onChange={(e) => setValue(maskAmount(e.target.value))} className="num min-w-0 flex-1 bg-transparent text-3xl font-bold outline-none placeholder:text-muted/50" />
+            <input
+              autoFocus={!tx}
+              inputMode="decimal"
+              placeholder="0,00"
+              value={value}
+              onChange={(e) => setValue(maskAmount(e.target.value))}
+              className="num min-w-0 flex-1 bg-transparent text-3xl font-bold outline-none placeholder:text-muted/50"
+            />
           </div>
         </label>
 
@@ -121,7 +128,13 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
           <span className="text-sm text-muted">Categoria</span>
           <div className="mt-2 flex flex-wrap gap-2">
             {kindCategories.map((c) => (
-              <button key={c.id} type="button" onClick={() => setCategoryId(c.id)} aria-pressed={activeCategory?.id === c.id} className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${activeCategory?.id === c.id ? 'border-primary bg-primary text-on-primary' : 'border-line text-muted'}`}>
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategoryId(c.id)}
+                aria-pressed={activeCategory?.id === c.id}
+                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${activeCategory?.id === c.id ? 'border-primary bg-primary text-on-primary' : 'border-line text-muted'}`}
+              >
                 {c.name}
               </button>
             ))}
@@ -134,11 +147,20 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
         <div className="grid grid-cols-1 gap-3 min-[350px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <label className="block min-w-0">
             <span className="text-sm text-muted">Data</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 box-border block h-12 w-full min-w-0 rounded-2xl border border-line bg-bg px-3 text-left outline-none focus:border-primary" />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-1 box-border block h-12 w-full min-w-0 rounded-2xl border border-line bg-bg px-3 text-left outline-none focus:border-primary"
+            />
           </label>
           <label className="block min-w-0">
             <span className="text-sm text-muted">Conta</span>
-            <select value={activeAccount?.id ?? ''} onChange={(e) => setAccountId(Number(e.target.value))} className="mt-1 box-border block h-12 w-full min-w-0 rounded-2xl border border-line bg-bg px-3 outline-none focus:border-primary">
+            <select
+              value={activeAccount?.id ?? ''}
+              onChange={(e) => setAccountId(Number(e.target.value))}
+              className="mt-1 box-border block h-12 w-full min-w-0 rounded-2xl border border-line bg-bg px-3 outline-none focus:border-primary"
+            >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -148,7 +170,13 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
           </label>
         </div>
 
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Descrição (opcional)" maxLength={80} className="w-full rounded-2xl border border-line bg-bg px-4 py-3 outline-none focus:border-primary" />
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Descrição (opcional)"
+          maxLength={80}
+          className="w-full rounded-2xl border border-line bg-bg px-4 py-3 outline-none focus:border-primary"
+        />
 
         {error && (
           <p role="alert" className="rounded-2xl bg-expense-soft px-4 py-3 text-sm text-expense">
@@ -156,7 +184,11 @@ export function TxSheet({ tx, defaultDate, categories, accounts, onClose }: Prop
           </p>
         )}
 
-        <button type="submit" disabled={!canSave || saving} className="w-full rounded-2xl bg-primary py-3.5 text-base font-semibold text-on-primary transition-opacity active:scale-[0.98] disabled:opacity-40">
+        <button
+          type="submit"
+          disabled={!canSave || saving}
+          className="w-full rounded-2xl bg-primary py-3.5 text-base font-semibold text-on-primary transition-opacity active:scale-[0.98] disabled:opacity-40"
+        >
           Salvar
         </button>
 

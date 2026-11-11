@@ -1,8 +1,17 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
+  "plugins": ["react", "typescript", "oxc", "jsx-a11y", "vitest"],
+  "options": { "typeAware": true },
+  "categories": { "correctness": "error", "suspicious": "warn" },
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    // JSX novo: não precisa importar o React em cada arquivo.
+    "react/react-in-jsx-scope": "off",
+    // Os grupos de botões (radiogroup) e o aviso (status) seguem o padrão WAI-ARIA e são testados com leitor de tela em mente.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "vitest/require-mock-type-parameters": "off",
+    "vitest/expect-expect": ["error", { "assertFunctionNames": ["expect", "expectDataError"] }]
+  },
+  "ignorePatterns": ["dist", "coverage", "playwright-report", "test-results", "dev-dist"]
 }

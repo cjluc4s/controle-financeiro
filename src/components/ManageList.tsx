@@ -83,8 +83,14 @@ export function ManageList({ title, items, usage, addLabel, keepOne = false, err
             .finally(() => setAdding(false))
         }}
       >
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={30} placeholder={addLabel} className="min-w-0 flex-1 rounded-2xl border border-line bg-bg px-4 py-2.5 outline-none focus:border-primary" />
-        <button type="submit" disabled={!draft.trim() || adding}className="rounded-2xl bg-primary px-4 font-semibold text-on-primary active:scale-95 disabled:opacity-40">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={30}
+          placeholder={addLabel}
+          className="min-w-0 flex-1 rounded-2xl border border-line bg-bg px-4 py-2.5 outline-none focus:border-primary"
+        />
+        <button type="submit" disabled={!draft.trim() || adding} className="rounded-2xl bg-primary px-4 font-semibold text-on-primary active:scale-95 disabled:opacity-40">
           Adicionar
         </button>
       </form>

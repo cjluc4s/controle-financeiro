@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import { TxRow } from '../components/TxRow'
 import { Icon } from '../components/Icon'
-import { getLastBackup } from '../backup'
 import type { Category, Tx } from '../db'
 import { daysSince } from '../lib/dates'
+import { getLastBackup } from '../lib/lastBackup'
 import { formatCents } from '../lib/money'
+import { breakdown } from '../lib/reports'
+import { nameMap, newestFirst } from '../lib/tx'
 
 interface Props {
   txs: Tx[]
@@ -16,25 +18,23 @@ interface Props {
 }
 
 export function Home({ txs, categories, totalCount, onOpenTx, onNew, onGoSettings }: Props) {
-  const names = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories])
+  const names = useMemo(() => nameMap(categories), [categories])
 
-  const { income, expense, byCategory } = useMemo(() => {
+  const { income, expense } = useMemo(() => {
     let inc = 0
     let exp = 0
-    const map = new Map<number, number>()
     for (const t of txs) {
       if (t.kind === 'income') inc += t.cents
-      else {
-        exp += t.cents
-        map.set(t.categoryId, (map.get(t.categoryId) ?? 0) + t.cents)
-      }
+      else exp += t.cents
     }
-    return { income: inc, expense: exp, byCategory: [...map.entries()].sort((a, b) => b[1] - a[1]) }
+    return { income: inc, expense: exp }
   }, [txs])
+  // Mesma regra do relatório: as 6 maiores categorias e, se houver mais, uma linha "Demais categorias".
+  const byCategory = useMemo(() => breakdown(txs, 'expense', names), [txs, names])
 
   const sinceBackup = daysSince(getLastBackup())
   const needsBackup = totalCount > 0 && (sinceBackup === null || sinceBackup >= 30)
-  const recent = [...txs].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 5)
+  const recent = useMemo(() => [...txs].sort(newestFirst).slice(0, 5), [txs])
 
   return (
     <>
@@ -81,14 +81,14 @@ export function Home({ txs, categories, totalCount, onOpenTx, onNew, onGoSetting
             <section className="anim-rise rounded-3xl bg-surface p-5 shadow-card" style={{ animationDelay: '60ms' }}>
               <h2 className="mb-4 font-semibold">Para onde foi o dinheiro</h2>
               <ul className="space-y-3">
-                {byCategory.slice(0, 6).map(([id, cents]) => (
-                  <li key={id}>
+                {byCategory.map((row) => (
+                  <li key={row.id ?? 'others'}>
                     <div className="mb-1 flex justify-between text-sm">
-                      <span>{names.get(id) ?? 'Sem categoria'}</span>
-                      <span className="num text-muted">{formatCents(cents)}</span>
+                      <span>{row.name}</span>
+                      <span className="num text-muted">{formatCents(row.cents)}</span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-line">
-                      <div className="h-full rounded-full bg-expense transition-[width] duration-500" style={{ width: `${(cents / expense) * 100}%` }} />
+                      <div className="h-full rounded-full bg-expense transition-[width] duration-500" style={{ width: `${row.share * 100}%` }} />
                     </div>
                   </li>
                 ))}
